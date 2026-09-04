@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Upload, Copy, RefreshCw, ImageDown, Sparkles } from "lucide-react";
+import { Loader2, Upload, Copy, RefreshCw, ImageDown, Sparkles, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -35,12 +35,32 @@ function Index() {
   const extract = useServerFn(extractHomeworkText);
   const solvePhoto = useServerFn(generateSolvedPhoto);
   const inputRef = useRef<HTMLInputElement>(null);
+  const handwritingRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [handwriting, setHandwriting] = useState<string | null>(null);
   const [result, setResult] = useState<Awaited<ReturnType<typeof extract>> | null>(null);
   const [loading, setLoading] = useState(false);
   const [resumido, setResumido] = useState(true);
   const [solved, setSolved] = useState<string | null>(null);
   const [solving, setSolving] = useState(false);
+
+  async function toDataUrl(file: File) {
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleHandwriting(file: File) {
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx. 8MB).");
+      return;
+    }
+    setHandwriting(await toDataUrl(file));
+    setSolved(null);
+  }
 
   async function handleFile(file: File) {
     if (file.size > 8 * 1024 * 1024) {

@@ -129,8 +129,15 @@ function Index() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      void navigator.clipboard.writeText(result);
-                      toast.success("Texto copiado!");
+                      void navigator.clipboard.writeText(
+                        result.questoes
+                          .map(
+                            (q) =>
+                              `${q.numero}) ${q.pergunta}\nResposta: ${q.resposta}\n${q.explicacao}`,
+                          )
+                          .join("\n\n"),
+                      );
+                      toast.success("Respostas copiadas!");
                     }}
                   >
                     <Copy /> Copiar
@@ -139,15 +146,39 @@ function Index() {
                     <RefreshCw /> Nova foto
                   </Button>
                 </div>
-                <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
-                  {result}
-                </pre>
+
+                {result.titulo ? (
+                  <p className="text-sm font-medium text-muted-foreground">{result.titulo}</p>
+                ) : null}
+
+                <ol className="max-h-[60vh] space-y-3 overflow-auto">
+                  {result.questoes.map((q, i) => (
+                    <li
+                      key={`${q.numero}-${i}`}
+                      className="rounded-lg border border-border bg-card p-4"
+                    >
+                      <div className="flex gap-3">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                          {q.numero}
+                        </span>
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">{q.pergunta}</p>
+                          <p className="font-medium text-foreground">Resposta: {q.resposta}</p>
+                          {q.explicacao ? (
+                            <p className="text-sm text-muted-foreground">{q.explicacao}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               </div>
             ) : (
               <div className="flex h-full items-center justify-center text-center text-muted-foreground">
-                O texto extraído aparecerá aqui.
+                As questões e respostas aparecerão aqui, numeradas.
               </div>
             )}
+
           </Card>
         </div>
       </main>

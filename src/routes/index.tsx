@@ -33,7 +33,7 @@ function Index() {
   const extract = useServerFn(extractHomeworkText);
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<Awaited<ReturnType<typeof extract>> | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleFile(file: File) {
@@ -52,13 +52,14 @@ function Index() {
     setLoading(true);
     try {
       const res = await extract({ data: { imageDataUrl: dataUrl } });
-      setResult(res.text);
+      setResult(res);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao processar a imagem.");
     } finally {
       setLoading(false);
     }
   }
+
 
   return (
     <div className="min-h-screen bg-background">

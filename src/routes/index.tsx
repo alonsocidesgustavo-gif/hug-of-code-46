@@ -155,8 +155,49 @@ function Index() {
               <Card className="space-y-3 p-6">
                 <p className="font-medium text-foreground">Foto da lição resolvida</p>
                 <p className="text-sm text-muted-foreground">
-                  A IA recria a mesma página com as respostas escritas à mão.
+                  Passo 1: envie acima a página <strong>limpa</strong> (sem respostas). Passo 2:
+                  envie abaixo uma foto com a <strong>sua letra</strong> para a IA imitar.
                 </p>
+
+                <div
+                  className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4 text-center"
+                  onClick={() => handwritingRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) void handleHandwriting(f);
+                  }}
+                >
+                  {handwriting ? (
+                    <img
+                      src={handwriting}
+                      alt="Amostra da letra do aluno"
+                      className="max-h-40 rounded-md object-contain"
+                    />
+                  ) : (
+                    <>
+                      <PenLine className="size-6 text-primary" />
+                      <p className="text-sm font-medium text-foreground">
+                        Enviar foto com a sua letra
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Opcional — sem ela a IA usa letra padrão de caneta azul
+                      </p>
+                    </>
+                  )}
+                  <input
+                    ref={handwritingRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleHandwriting(f);
+                    }}
+                  />
+                </div>
+
                 <Button onClick={() => void handleSolvedPhoto()} disabled={solving}>
                   {solving ? <Loader2 className="animate-spin" /> : <Sparkles />}
                   {solving ? "Gerando foto..." : "Gerar foto resolvida"}

@@ -76,11 +76,20 @@ export const extractHomeworkText = createServerFn({ method: "POST" })
     return { titulo: parsed.titulo ?? "", questoes };
   });
 
+const solvedSchema = z.object({
+  imageDataUrl: z.string().min(20),
+  handwritingDataUrl: z.string().min(20).optional(),
+});
+
 export const generateSolvedPhoto = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => schema.parse(data))
+  .inputValidator((data: unknown) => solvedSchema.parse(data))
   .handler(async ({ data }) => {
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("Chave de IA não configurada.");
+
+    const texto = data.handwritingDataUrl
+      ? "A PRIMEIRA imagem é a página limpa da lição de casa. A SEGUNDA imagem é uma amostra da letra manuscrita do aluno. Gere novamente a PRIMEIRA página, idêntica no papel, na iluminação e no enquadramento, mas agora com todas as questões respondidas corretamente à mão, imitando fielmente a letra, a inclinação, o tamanho e a cor da caneta da SEGUNDA imagem. Não copie o conteúdo escrito na segunda imagem, apenas o estilo da letra. Não mude o texto impresso, não adicione marcas d'água nem texto extra."
+      : "Esta é a foto de uma lição de casa. Gere a MESMA página, idêntica no papel, na iluminação e no enquadramento, mas agora com todas as questões respondidas corretamente à mão, com caneta azul, letra de estudante natural e levemente irregular. Não mude o texto impresso, não adicione marcas d'água nem texto extra.";
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
       method: "POST",
@@ -94,11 +103,11 @@ export const generateSolvedPhoto = createServerFn({ method: "POST" })
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: "Esta é a foto de uma lição de casa. Gere a MESMA página, idêntica no papel, na iluminação e no enquadramento, mas agora com todas as questões respondidas corretamente à mão, com caneta azul, letra de estudante natural e levemente irregular. Não mude o texto impresso, não adicione marcas d'água nem texto extra.",
-              },
+              { type: "text", text: texto },
               { type: "image_url", image_url: { url: data.imageDataUrl } },
+              ...(data.handwritingDataUrl
+                ? [{ type: "image_url", image_url: { url: data.handwritingDataUrl } }]
+                : []),
             ],
           },
         ],

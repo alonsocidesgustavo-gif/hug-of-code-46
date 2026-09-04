@@ -89,12 +89,16 @@ function Index() {
 
   async function handleSolvedPhoto() {
     if (!preview) return;
+    if (!handwriting) {
+      toast.error("Envie uma foto com a sua letra antes de gerar.");
+      return;
+    }
     setSolving(true);
     try {
       const res = await solvePhoto({
         data: {
           imageDataUrl: preview,
-          ...(handwriting ? { handwritingDataUrl: handwriting } : {}),
+          handwritingDataUrl: handwriting,
           ...(result
             ? {
                 respostas: result.questoes.map((q) => ({
@@ -215,7 +219,7 @@ function Index() {
                         Enviar foto com a sua letra
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Opcional — sem ela a IA usa letra padrão de caneta azul
+                        Use uma foto nítida com várias palavras e números
                       </p>
                     </>
                   )}
@@ -231,9 +235,12 @@ function Index() {
                   />
                 </div>
 
-                <Button onClick={() => void handleSolvedPhoto()} disabled={solving}>
+                <Button
+                  onClick={() => void handleSolvedPhoto()}
+                  disabled={solving || !handwriting}
+                >
                   {solving ? <Loader2 className="animate-spin" /> : <Sparkles />}
-                  {solving ? "Gerando foto..." : "Gerar foto resolvida"}
+                  {solving ? "Analisando letra e gerando..." : "Gerar foto resolvida"}
                 </Button>
                 {solved ? (
                   <div className="space-y-3">

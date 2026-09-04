@@ -90,6 +90,78 @@ export const generateSolvedPhoto = createServerFn({ method: "POST" })
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("Chave de IA não configurada.");
 
+    if (!data.handwritingDataUrl) {
+      throw new Error("Envie uma foto com a letra do aluno antes de gerar.");
+    }
+
+    const handwritingAnalysis = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.7-flash",
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content:
+                'Você é especialista em análise visual de caligrafia. Observe SOMENTE a escrita manual da imagem e responda em JSON válido: {"perfil": string}. O perfil deve ser extremamente visual e específico para outro modelo conseguir reproduzir a mesma letra: inclinação, altura relativa de maiúsculas/minúsculas, largura, espaçamento, linha de base, pressão do lápis, tremores, ligação entre letras e formato distintivo de a, e, g, m, r, s, t, números e acentos que estiverem visíveis. Diferencie letra cursiva e de forma. Não transcreva nem repita o conteúdo da imagem.',
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Analise cuidadosamente esta amostra real da letra do aluno.",
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: data.handwritingDataUrl },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    );
+
+    if (handwritingAnalysis.status === 429) {
+      throw new Error("Muitas requisições. Tente novamente em instantes.");
+    }
+    if (handwritingAnalysis.status === 402) {
+      throw new Error("Créditos de IA esgotados. Adicione créditos no Lovable AI.");
+    }
+    if (handwritingAnalysis.status === 403) {
+      throw new Error("A análise por IA está bloqueada neste projeto.");
+    }
+    if (!handwritingAnalysis.ok) {
+      const message = await handwritingAnalysis.text();
+      throw new Error(message || "Não foi possível analisar a letra do aluno.");
+    }
+
+    const analysisJson = (await handwritingAnalysis.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const analysisRaw = analysisJson.choices?.[0]?.message?.content ?? "";
+    const analysisCleaned = analysisRaw
+      .replace(/^```json\s*/i, "")
+      .replace(/```$/, "")
+      .trim();
+    let handwritingProfile = "";
+    try {
+      const parsed = JSON.parse(analysisCleaned) as { perfil?: string };
+      handwritingProfile = String(parsed.perfil ?? "").trim();
+    } catch {
+      throw new Error("Não consegui identificar o estilo da letra. Envie uma foto mais nítida.");
+    }
+    if (!handwritingProfile) {
+      throw new Error("Não encontrei escrita manual na amostra. Envie outra foto.");
+    }
+
     const regras =
       " REGRAS OBRIGATÓRIAS DE PREENCHIMENTO: 1) Varra a página inteira de cima até embaixo, da esquerda para a direita, e localize TODAS as questões, itens, subitens (a, b, c), linhas pontilhadas, espaços em branco, tabelas e alternativas. 2) Responda CADA questão individualmente, escrevendo a resposta exatamente no espaço em branco daquela questão (na linha/lacuna correspondente). 3) NUNCA agrupe respostas de várias questões em um mesmo lugar e NUNCA escreva um bloco de texto solto na margem. 4) NÃO pule nenhuma questão: se houver 10 questões, devem existir 10 respostas manuscritas, cada uma no seu lugar. 5) Em alternativas de múltipla escolha, marque apenas UMA alternativa por questão (um X ou círculo na letra correta) e não marque nenhuma outra. 6) Não escreva nada em áreas que não sejam espaços de resposta.";
 
@@ -103,9 +175,9 @@ export const generateSolvedPhoto = createServerFn({ method: "POST" })
         : "";
 
     const texto =
-      (data.handwritingDataUrl
-        ? "A PRIMEIRA imagem é a página limpa da lição de casa. A SEGUNDA imagem é uma amostra da letra manuscrita do aluno. Gere novamente a PRIMEIRA página, idêntica no papel, na iluminação e no enquadramento, mas agora com todas as questões respondidas corretamente à mão, imitando a letra da SEGUNDA imagem. A escrita deve ser feita a LÁPIS (grafite), com traço bem fraco, claro e acinzentado, com variação de pressão e alguns pontos quase apagados. A letra deve ser visivelmente TORTA e irregular: linhas de base onduladas, inclinação inconsistente, tamanho variando, espaçamento desigual e pequenos borrões/apagões de borracha. Não copie o conteúdo escrito na segunda imagem, apenas o estilo da letra. Não mude o texto impresso, não adicione marcas d'água nem texto extra."
-        : "Esta é a foto de uma lição de casa. Gere a MESMA página, idêntica no papel, na iluminação e no enquadramento, mas agora com todas as questões respondidas corretamente à mão, escritas a LÁPIS (grafite) com traço bem fraco, claro e acinzentado. A letra deve ser de estudante, visivelmente TORTA e irregular: linhas de base onduladas, inclinação inconsistente, tamanho variando, espaçamento desigual, variação de pressão e alguns trechos quase apagados, com pequenas marcas de borracha. Não mude o texto impresso, não adicione marcas d'água nem texto extra.") +
+      "A PRIMEIRA imagem é a página limpa da lição. A SEGUNDA imagem é a referência obrigatória de caligrafia do aluno. Antes de escrever, examine visualmente a SEGUNDA imagem e copie o estilo dela, não uma caligrafia escolar genérica. Preserve as peculiaridades individuais das letras e números, a inclinação, as proporções, os espaços, o alinhamento e o ritmo. Um modelo de visão também descreveu a amostra assim: " +
+      handwritingProfile +
+      ". Use essa descrição junto com a referência visual. Gere novamente a PRIMEIRA página, idêntica no papel, texto impresso, iluminação, perspectiva e enquadramento, acrescentando somente as respostas manuscritas. Escreva a LÁPIS grafite, com traço fraco, claro e acinzentado, pressão variável e pequenas imperfeições naturais. Não deixe a letra mais bonita, regular ou legível que a amostra. Não copie o conteúdo da segunda imagem; copie exclusivamente a caligrafia. Não adicione marcas d'água nem texto extra." +
       regras +
       listaRespostas;
 
@@ -125,9 +197,7 @@ export const generateSolvedPhoto = createServerFn({ method: "POST" })
             content: [
               { type: "text", text: texto },
               { type: "image_url", image_url: { url: data.imageDataUrl } },
-              ...(data.handwritingDataUrl
-                ? [{ type: "image_url", image_url: { url: data.handwritingDataUrl } }]
-                : []),
+              { type: "image_url", image_url: { url: data.handwritingDataUrl } },
             ],
           },
         ],

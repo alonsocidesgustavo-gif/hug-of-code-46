@@ -91,7 +91,12 @@ function Index() {
     if (!preview) return;
     setSolving(true);
     try {
-      const res = await solvePhoto({ data: { imageDataUrl: preview } });
+      const res = await solvePhoto({
+        data: {
+          imageDataUrl: preview,
+          ...(handwriting ? { handwritingDataUrl: handwriting } : {}),
+        },
+      });
       setSolved(res.imageDataUrl);
       toast.success("Foto resolvida pronta!");
     } catch (e) {

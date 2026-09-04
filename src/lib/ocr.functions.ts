@@ -5,6 +5,13 @@ const schema = z.object({
   imageDataUrl: z.string().min(20),
 });
 
+export type Questao = {
+  numero: string;
+  pergunta: string;
+  resposta: string;
+  explicacao: string;
+};
+
 export const extractHomeworkText = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => schema.parse(data))
   .handler(async ({ data }) => {
@@ -19,17 +26,17 @@ export const extractHomeworkText = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
             content:
-              "Você é um professor particular. A partir da imagem de uma página de lição de casa: 1) transcreva TUDO que está escrito, em português, mantendo a estrutura, usando seções em markdown: Cabeçalho, Enunciados, Questões (numeradas), Textos de apoio, Anotações; 2) escreva '## Texto corrido' com tudo em um texto contínuo; 3) escreva '## Respostas' resolvendo cada questão numerada, com a resposta final clara e uma explicação curta e simples do raciocínio (mostre as contas quando for matemática). Não invente conteúdo que não está na página; se uma questão estiver ilegível ou incompleta, diga isso.",
+              "Você é um professor particular. Leia a imagem da lição de casa e responda APENAS com json válido neste formato: {\"titulo\": string, \"questoes\": [{\"numero\": string, \"pergunta\": string, \"resposta\": string, \"explicacao\": string}]}. Uma entrada por questão da página, na ordem em que aparecem. 'numero' é só o número/letra da questão (ex: \"1\", \"2a\"). 'pergunta' é o enunciado transcrito. 'resposta' é curta e direta. 'explicacao' tem no máximo 2 frases simples (mostre as contas em matemática). Escreva tudo em português. Não invente questões; se algo estiver ilegível, escreva isso na resposta.",
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Extraia todo o conteúdo desta página e responda as questões." },
-
+              { type: "text", text: "Leia esta página e responda as questões." },
               { type: "image_url", image_url: { url: data.imageDataUrl } },
             ],
           },
@@ -44,7 +51,25 @@ export const extractHomeworkText = createServerFn({ method: "POST" })
     const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
-    const text = json.choices?.[0]?.message?.content ?? "";
-    if (!text) throw new Error("Não foi possível ler a imagem.");
-    return { text };
+    const raw = json.choices?.[0]?.message?.content ?? "";
+    if (!raw) throw new Error("Não foi possível ler a imagem.");
+
+    const cleaned = raw.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    let parsed: { titulo?: string; questoes?: Questao[] };
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      throw new Error("Não foi possível organizar as questões. Tente outra foto.");
+    }
+
+    const questoes = (parsed.questoes ?? []).map((q, i) => ({
+      numero: String(q?.numero ?? i + 1),
+      pergunta: String(q?.pergunta ?? ""),
+      resposta: String(q?.resposta ?? ""),
+      explicacao: String(q?.explicacao ?? ""),
+    }));
+
+    if (questoes.length === 0) throw new Error("Nenhuma questão encontrada nesta foto.");
+
+    return { titulo: parsed.titulo ?? "", questoes };
   });

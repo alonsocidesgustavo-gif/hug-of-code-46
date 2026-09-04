@@ -207,7 +207,11 @@ export const generateSolvedPhoto = createServerFn({ method: "POST" })
 
     if (res.status === 429) throw new Error("Muitas requisições. Tente novamente em instantes.");
     if (res.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos no Lovable AI.");
-    if (!res.ok) throw new Error("Não foi possível gerar a foto resolvida.");
+    if (res.status === 403) throw new Error("A geração por IA está bloqueada neste projeto.");
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(message || "Não foi possível gerar a foto resolvida.");
+    }
 
     const json = (await res.json()) as { data?: Array<{ b64_json?: string }> };
     const b64 = json.data?.[0]?.b64_json;

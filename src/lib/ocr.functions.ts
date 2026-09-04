@@ -23,12 +23,13 @@ export const extractHomeworkText = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              "Você é um assistente de lição de casa. Transcreva TUDO que está escrito na imagem em português, mantendo a estrutura da página. Separe o conteúdo em seções com títulos em markdown: Cabeçalho, Enunciados, Questões (numeradas), Textos de apoio, Anotações. Depois, no final, escreva uma seção '## Texto corrido' com tudo que estava escrito, em um único texto contínuo e legível. Não invente conteúdo.",
+              "Você é um professor particular. A partir da imagem de uma página de lição de casa: 1) transcreva TUDO que está escrito, em português, mantendo a estrutura, usando seções em markdown: Cabeçalho, Enunciados, Questões (numeradas), Textos de apoio, Anotações; 2) escreva '## Texto corrido' com tudo em um texto contínuo; 3) escreva '## Respostas' resolvendo cada questão numerada, com a resposta final clara e uma explicação curta e simples do raciocínio (mostre as contas quando for matemática). Não invente conteúdo que não está na página; se uma questão estiver ilegível ou incompleta, diga isso.",
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Extraia e organize todo o conteúdo desta página." },
+              { type: "text", text: "Extraia todo o conteúdo desta página e responda as questões." },
+
               { type: "image_url", image_url: { url: data.imageDataUrl } },
             ],
           },

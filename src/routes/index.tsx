@@ -72,12 +72,13 @@ function Index() {
 
       <main className="mx-auto max-w-5xl px-6 py-12">
         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-          Envie a foto da lição e receba tudo transcrito
+          Envie a foto da lição e receba tudo transcrito e respondido
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground">
-          A página é separada por seções — enunciados, questões, anotações — e no final você recebe
-          um texto corrido com tudo que estava escrito.
+          A página é separada por seções — enunciados, questões, anotações —, você recebe um texto
+          corrido com tudo que estava escrito e as respostas das questões explicadas.
         </p>
+
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           <Card

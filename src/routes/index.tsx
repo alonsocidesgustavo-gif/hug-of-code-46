@@ -95,6 +95,14 @@ function Index() {
         data: {
           imageDataUrl: preview,
           ...(handwriting ? { handwritingDataUrl: handwriting } : {}),
+          ...(result
+            ? {
+                respostas: result.questoes.map((q) => ({
+                  numero: q.numero,
+                  resposta: q.resposta,
+                })),
+              }
+            : {}),
         },
       });
       setSolved(res.imageDataUrl);
